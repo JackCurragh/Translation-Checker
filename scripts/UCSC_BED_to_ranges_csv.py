@@ -52,7 +52,15 @@ def bed_to_csv(bed: pd.DataFrame) -> pd.DataFrame:
         for i in range(row['blockCount']):
             start = int(row['start']) + int(row['blockStarts'].split(',')[i])
             end = start + int(row['blockSizes'].split(',')[i])
-            genomic_ranges = genomic_ranges.append({'name': row['name'], 'chr': row['chr'], 'start': start, 'end': end}, ignore_index=True)
+            entry = pd.DataFrame(
+                {
+                    'name': [row['name']],
+                    'chr': [row['chr']],
+                    'start': [start],
+                    'end': [end]
+                }
+            )
+            genomic_ranges = pd.concat([genomic_ranges, entry], ignore_index=True)
 
     return genomic_ranges
 

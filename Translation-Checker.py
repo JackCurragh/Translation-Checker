@@ -147,19 +147,23 @@ def calculate_translation_support_bigwig(
     translation_support : pd.DataFrame
         A dataframe of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)
     """
-    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "score"])
+    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "sum"])
     for index, row in genome_ranges.iterrows():
         genomic_range = bw.stats(row["chr"], row["start"], row["end"], type="sum")
-        translation_support = translation_support.append(
-            {
-                "name": row["name"],
-                "chr": row["chr"],
-                "start": row["start"],
-                "end": row["end"],
-                "score": genomic_range[0],
-            },
-            ignore_index=True,
+        if genomic_range[0] is None:
+            genomic_range[0] = 0
+        entry = pd.DataFrame({
+                "name": [row["name"]],
+                "chr": [row["chr"]],
+                "start": [row["start"]],
+                "end": [row["end"]],
+                "sum": [genomic_range[0]],
+                "score": [genomic_range[0] / (row["end"] - row["start"])],
+            })
+        translation_support = pd.concat(
+            [entry, translation_support], axis=0
         )
+
     return translation_support
 
 
