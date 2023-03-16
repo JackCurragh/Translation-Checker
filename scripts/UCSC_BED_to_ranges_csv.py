@@ -50,12 +50,11 @@ def bed_to_csv(bed: pd.DataFrame) -> pd.DataFrame:
 
     for index, row in bed.iterrows():
         for i in range(row['blockCount']):
-            start = row['start'] + row['blockStarts'].split(',')[i]
-            end = start + row['blockSizes'].split(',')[i]
-            print({'name': row['name'], 'chr': row['chr'], 'start': start, 'end': end})
+            start = int(row['start']) + int(row['blockStarts'].split(',')[i])
+            end = start + int(row['blockSizes'].split(',')[i])
             genomic_ranges = genomic_ranges.append({'name': row['name'], 'chr': row['chr'], 'start': start, 'end': end}, ignore_index=True)
 
-    return bed
+    return genomic_ranges
 
 def write_bed(bed: pd.DataFrame, output_file: str):
     '''
@@ -70,7 +69,7 @@ def write_bed(bed: pd.DataFrame, output_file: str):
     '''
     bed.to_csv(output_file, sep='\t', header=False, index=False)
 
-def main():
+def main(args):
     bed = read_bed(args.input)
     bed = bed_to_csv(bed)
     write_bed(bed, args.output)
@@ -82,4 +81,5 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input', help='A genePred file', required=True)
     parser.add_argument('-o', '--output', help='A bed file', required=True)
     args = parser.parse_args()
+    main(args)
 
