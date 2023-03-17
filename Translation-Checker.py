@@ -19,11 +19,11 @@ Options:
 """
 
 import argparse
-import pandas as pd
+import polars as pl
 import pyBigWig
 
 
-def read_genomic_ranges(genomic_ranges_file: str) -> pd.DataFrame:
+def read_genomic_ranges(genomic_ranges_file: str) -> pl.DataFrame:
     """
     Read a list of genomic ranges (name, chr, start, end)
 
@@ -34,19 +34,19 @@ def read_genomic_ranges(genomic_ranges_file: str) -> pd.DataFrame:
 
     Returns
     -------
-    genomic_ranges : pd.DataFrame
+    genomic_ranges : pl.DataFrame
         A dataframe of genomic ranges (name chr, start, end)
     """
-    genomic_ranges = pd.read_csv(
+    genomic_ranges = pl.read_csv(
         genomic_ranges_file,
         sep="\t",
-        header=None,
-        names=["name", "chr", "start", "end"],
+        has_header=False,
+        new_columns=["name", "chr", "start", "end"],
     )
     return genomic_ranges
 
 
-def read_ribo_seq_bed(ribo_seq_file: str) -> pd.DataFrame:
+def read_ribo_seq_bed(ribo_seq_file: str) -> pl.DataFrame:
     """
     Read a Ribo-Seq File that is in BED format (chr, start, end, score)
 
@@ -57,12 +57,12 @@ def read_ribo_seq_bed(ribo_seq_file: str) -> pd.DataFrame:
 
     Returns
     -------
-    ribo_seq : pd.DataFrame
+    ribo_seq : pl.DataFrame
         A dataframe of ribo-seq data (chr, start, end, score)
     """
     try:
-        ribo_seq = pd.read_csv(
-            ribo_seq_file, sep="\t", header=None, names=["chr", "start", "end", "score"]
+        ribo_seq = pl.read_csv(
+            ribo_seq_file, has_header=False, new_columns=["chr", "start", "end", "score"], sep="\t", dtypes={"chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "score": pl.Float32}
         )
         return ribo_seq
         
@@ -93,69 +93,73 @@ def read_ribo_seq_bigwig(ribo_seq_file: str) -> pyBigWig:
 
 
 def calculate_translation_support_bed(
-    genomic_ranges: pd.DataFrame, ribo_seq: pd.DataFrame
-) -> pd.DataFrame:
+    genomic_ranges: pl.DataFrame, ribo_seq: pl.DataFrame
+) -> pl.DataFrame:
     """
     Calculate the translation support for each genomic range
 
     Parameters
     ----------
-    genomic_ranges : pd.DataFrame
+    genomic_ranges : pl.DataFrame
         A dataframe of genomic ranges (chr, start, end)
-    ribo_seq : pd.DataFrame
+    ribo_seq : pl.DataFrame
         A dataframe of ribo-seq data (chr, start, end, score)   
 
     Returns
     -------
-    translation_support : pd.DataFrame
+    translation_support : pl.DataFrame
         A dataframe of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)
     """
-    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "sum", "score"])
-    for index, row in genomic_ranges.iterrows():
-        genomic_range = ribo_seq[
+    translation_support = pl.DataFrame(schema={"name": pl.Utf8, "chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "sum": pl.Float32, "score": pl.Float32})
+    for row in genomic_ranges.iter_rows(named=True):
+        genomic_range = ribo_seq.filter(
             (ribo_seq["chr"] == row["chr"])
             & (ribo_seq["start"] >= row["start"])
             & (ribo_seq["end"] <= row["end"])
-        ]
-        entry = pd.DataFrame({
+        )
+        if len(genomic_range) == 0:
+            continue
+
+        entry = pl.DataFrame({
                 "name": [row["name"]],
                 "chr": [row["chr"]],
                 "start": [row["start"]],
                 "end": [row["end"]],
-                "sum": [genomic_range["score"].sum()],
-                "score": [genomic_range["score"].sum() / (row["end"] - row["start"])],
-                }
-            )
-        translation_support = pd.concat(
-            [entry, translation_support], axis=0
+                "sum": [genomic_range.sum()['score'][0]],
+                "score": [genomic_range.sum()['score'][0] / (row["end"] - row["start"])],
+                },
+                schema={"name": pl.Utf8, "chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "sum": pl.Float32, "score": pl.Float32}
+                )
+        translation_support = pl.concat(
+            [entry, translation_support], how="vertical"
         )
     return translation_support
 
 
 def calculate_translation_support_bigwig(
-    genome_ranges: pd.DataFrame, bw: pyBigWig
-) -> pd.DataFrame:
+    genome_ranges: pl.DataFrame, bw: pyBigWig
+) -> pl.DataFrame:
     """
     Calculate translation support for each genomic range
 
     Parameters
     ----------
-    genomic_ranges : pd.DataFrame
+    genomic_ranges : pl.DataFrame
         A dataframe of genomic ranges (chr, start, end)
     bw : pyBigWig
         A pyBigWig object of ribo-seq data
 
     Returns
     -------
-    translation_support : pd.DataFrame
+    translation_support : pl.DataFrame
         A dataframe of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)
     """
-    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "sum"])
+    translation_support = pl.DataFrame(columns=["name", "chr", "start", "end", "sum"])
     for index, row in genome_ranges.iterrows():
         genomic_range = bw.stats(row["chr"], row["start"], row["end"], type="sum")
         if genomic_range[0] is None:
             genomic_range[0] = 0
-        entry = pd.DataFrame({
+        entry = pl.DataFrame({
                 "name": [row["name"]],
                 "chr": [row["chr"]],
                 "start": [row["start"]],
@@ -163,18 +167,18 @@ def calculate_translation_support_bigwig(
                 "sum": [genomic_range[0]],
                 "score": [genomic_range[0] / (row["end"] - row["start"])],
             })
-        translation_support = pd.concat(
+        translation_support = pl.concat(
             [entry, translation_support], axis=0
         )
 
     return translation_support
 
 
-def write_output(translation_support: pd.DataFrame, output_file: str):
+def write_output(translation_support: pl.DataFrame, output_file: str):
     """
     Write output to specified filepath
     """
-    translation_support.to_csv(output_file, sep="\t", header=None, index=False)
+    translation_support.write_csv(output_file, has_header=False)
 
 
 def main(args: argparse.Namespace):
