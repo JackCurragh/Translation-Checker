@@ -65,6 +65,7 @@ def read_ribo_seq_bed(ribo_seq_file: str) -> pd.DataFrame:
             ribo_seq_file, sep="\t", header=None, names=["chr", "start", "end", "score"]
         )
         return ribo_seq
+        
     except:
         raise Exception("Ribo-Seq file does not appear to be a BED file")
 
@@ -109,22 +110,24 @@ def calculate_translation_support_bed(
     translation_support : pd.DataFrame
         A dataframe of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)
     """
-    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "score"])
+    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "sum", "score"])
     for index, row in genomic_ranges.iterrows():
         genomic_range = ribo_seq[
             (ribo_seq["chr"] == row["chr"])
             & (ribo_seq["start"] >= row["start"])
             & (ribo_seq["end"] <= row["end"])
         ]
-        translation_support = translation_support.append(
-            {
-                "name": row["name"],
-                "chr": row["chr"],
-                "start": row["start"],
-                "end": row["end"],
-                "score": genomic_range["score"].sum(),
-            },
-            ignore_index=True,
+        entry = pd.DataFrame({
+                "name": [row["name"]],
+                "chr": [row["chr"]],
+                "start": [row["start"]],
+                "end": [row["end"]],
+                "sum": [genomic_range["score"].sum()],
+                "score": [genomic_range["score"].sum() / (row["end"] - row["start"])],
+                }
+            )
+        translation_support = pd.concat(
+            [entry, translation_support], axis=0
         )
     return translation_support
 
@@ -180,7 +183,10 @@ def main(args: argparse.Namespace):
     """
     genomic_ranges = read_genomic_ranges(args.genomic_ranges_file)
 
-    file_is_bw = pyBigWig.open(args.ribo_seq_file).isBigWig()
+    if not args.format:
+        file_is_bw = pyBigWig.open(args.ribo_seq_file).isBigWig()
+    else:
+        file_is_bw = args.format == "bw"
 
     if file_is_bw:
         ribo_seq = read_ribo_seq_bigwig(args.ribo_seq_file)
@@ -219,6 +225,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="A list of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)",
+    )
+    parser.add_argument(
+        "-f",
+        "--format",
+        type=str,
+        required=False,
     )
     args = parser.parse_args()
     main(args)
