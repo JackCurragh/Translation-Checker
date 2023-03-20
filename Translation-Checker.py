@@ -61,8 +61,11 @@ def read_ribo_seq_bed(ribo_seq_file: str) -> pl.DataFrame:
         A dataframe of ribo-seq data (chr, start, end, score)
     """
     try:
-        ribo_seq = pl.read_csv(
-            ribo_seq_file, has_header=False, new_columns=["chr", "start", "end", "score"], sep="\t", dtypes={"chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "score": pl.Float32}
+        ribo_seq = pl.scan_csv(
+            ribo_seq_file,
+            sep="\t", 
+            has_header=False, 
+            dtypes={"chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "score": pl.Float32}
         )
         return ribo_seq
         
@@ -111,28 +114,29 @@ def calculate_translation_support_bed(
         A dataframe of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)
     """
     translation_support = pl.DataFrame(schema={"name": pl.Utf8, "chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "sum": pl.Float32, "score": pl.Float32})
+    translation_support = {"name": [], "chr": [], "start": [], "end": [], "sum": [], "score": []}
     for row in genomic_ranges.iter_rows(named=True):
         genomic_range = ribo_seq.filter(
-            (ribo_seq["chr"] == row["chr"])
-            & (ribo_seq["start"] >= row["start"])
-            & (ribo_seq["end"] <= row["end"])
+            (pl.col('chr') == row["chr"])
+            & (pl.col('start')  >= row["start"])
+            & (pl.col('end')  <= row["end"])
         )
-        if len(genomic_range) == 0:
-            continue
+        if genomic_range.collect().shape[0] == 0:
+            translation_support["name"].append(row["name"])
+            translation_support["chr"].append(row["chr"])
+            translation_support["start"].append(row["start"])
+            translation_support["end"].append(row["end"])
+            translation_support["sum"].append(0)
+            translation_support["score"].append(0)
+        else:
+            translation_support["name"].append(row["name"])
+            translation_support["chr"].append(row["chr"])
+            translation_support["start"].append(row["start"])
+            translation_support["end"].append(row["end"])
+            translation_support["sum"].append(genomic_range.sum().collect()['score'][0])
+            translation_support["score"].append(genomic_range.sum().collect()['score'][0] / (row["end"] - row["start"]))
 
-        entry = pl.DataFrame({
-                "name": [row["name"]],
-                "chr": [row["chr"]],
-                "start": [row["start"]],
-                "end": [row["end"]],
-                "sum": [genomic_range.sum()['score'][0]],
-                "score": [genomic_range.sum()['score'][0] / (row["end"] - row["start"])],
-                },
-                schema={"name": pl.Utf8, "chr": pl.Utf8, "start": pl.Int32, "end": pl.Int32, "sum": pl.Float32, "score": pl.Float32}
-                )
-        translation_support = pl.concat(
-            [entry, translation_support], how="vertical"
-        )
+    translation_support = pl.DataFrame(translation_support)
     return translation_support
 
 
