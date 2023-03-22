@@ -21,6 +21,7 @@ Options:
 import argparse
 import polars as pl
 import pyBigWig
+import pandas as pd
 
 
 def read_genomic_ranges(genomic_ranges_file: str) -> pl.DataFrame:
@@ -141,8 +142,8 @@ def calculate_translation_support_bed(
 
 
 def calculate_translation_support_bigwig(
-    genome_ranges: pl.DataFrame, bw: pyBigWig
-) -> pl.DataFrame:
+    genome_ranges: pd.DataFrame, bw: pyBigWig
+) -> pd.DataFrame:
     """
     Calculate translation support for each genomic range
 
@@ -158,32 +159,40 @@ def calculate_translation_support_bigwig(
     translation_support : pl.DataFrame
         A dataframe of genomic ranges with a score for how much translation support there is for each range. (chr, start, end, score)
     """
-    translation_support = pl.DataFrame(columns=["name", "chr", "start", "end", "sum"])
-    for index, row in genome_ranges.iterrows():
-        genomic_range = bw.stats(row["chr"], row["start"], row["end"], type="sum")
+    translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "sum"])
+    for row in genome_ranges.iterrows():
+        if row[1] in bw.chroms():
+            genomic_range = bw.stats(row[1], row[2], row[3], type="sum")
+        else:
+            genomic_range = [0]
         if genomic_range[0] is None:
             genomic_range[0] = 0
-        entry = pl.DataFrame({
-                "name": [row["name"]],
-                "chr": [row["chr"]],
-                "start": [row["start"]],
-                "end": [row["end"]],
+        entry = pd.DataFrame({
+                "name": [row[0]],
+                "chr": [row[1]],
+                "start": [row[2]],
+                "end": [row[3]],
                 "sum": [genomic_range[0]],
-                "score": [genomic_range[0] / (row["end"] - row["start"])],
+                "score": [genomic_range[0] / (row[3] - row[2])],
             })
-        translation_support = pl.concat(
+        translation_support = pd.concat(
             [entry, translation_support], axis=0
         )
 
     return translation_support
 
 
-def write_output(translation_support: pl.DataFrame, output_file: str):
+def write_output_pl(translation_support: pl.DataFrame, output_file: str):
     """
     Write output to specified filepath
     """
     translation_support.write_csv(output_file, has_header=False)
 
+def write_output_pd(translation_support: pd.DataFrame, output_file: str):
+    """
+    Write output to specified filepath
+    """
+    translation_support.to_csv(output_file)
 
 def main(args: argparse.Namespace):
     """
@@ -201,12 +210,14 @@ def main(args: argparse.Namespace):
         translation_support = calculate_translation_support_bigwig(
             genomic_ranges, ribo_seq
         )
+        write_output_pd(translation_support, args.output_file)
+
     else:
         ribo_seq = read_ribo_seq_bed(args.ribo_seq_file)
         translation_support = calculate_translation_support_bed(
             genomic_ranges, ribo_seq
         )
-    write_output(translation_support, args.output_file)
+        write_output_pl(translation_support, args.output_file)
 
 
 if __name__ == "__main__":
