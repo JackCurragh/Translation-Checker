@@ -31,7 +31,7 @@ def read_ranges_csv(ranges_csv: str) -> pd.DataFrame:
     '''
     ranges = pd.read_csv(
         ranges_csv,
-        sep="\t",
+        # sep="\t",
         header=0,
         names=["name", "chr", "start", "end", "sum", "score"],
     )
