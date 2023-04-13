@@ -13,6 +13,7 @@ Options:
 
 import argparse
 import pandas as pd
+import numpy as np
 
 def read_bed(bed: str) -> pd.DataFrame:
     '''
@@ -46,23 +47,21 @@ def bed_to_csv(bed: pd.DataFrame) -> pd.DataFrame:
     bed : pd.DataFrame
         A dataframe of bed data for genomic coding regions
     '''
-    genomic_ranges = pd.DataFrame(columns=['name', 'chr', 'start', 'end'])
+    def generate_ranges(row):
+        start = row['start'] + np.array([x for x in row['blockStarts'].split(',') if x], dtype=int)
+        end = start + np.array([x for x in row['blockSizes'].split(',') if x], dtype=int)
+        return pd.DataFrame({
+            'name': [row['name']] * len(start),
+            'chr': [row['chr']] * len(start),
+            'start': start,
+            'end': end
+        })
 
-    for index, row in bed.iterrows():
-        for i in range(row['blockCount']):
-            start = int(row['start']) + int(row['blockStarts'].split(',')[i])
-            end = start + int(row['blockSizes'].split(',')[i])
-            entry = pd.DataFrame(
-                {
-                    'name': [row['name']],
-                    'chr': [row['chr']],
-                    'start': [start],
-                    'end': [end]
-                }
-            )
-            genomic_ranges = pd.concat([genomic_ranges, entry], ignore_index=True)
+    genomic_ranges_list = bed.apply(generate_ranges, axis=1).tolist()
+    genomic_ranges = pd.concat(genomic_ranges_list, ignore_index=True)
 
     return genomic_ranges
+
 
 def write_bed(bed: pd.DataFrame, output_file: str):
     '''
