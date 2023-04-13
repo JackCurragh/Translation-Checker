@@ -48,8 +48,8 @@ def bed_to_csv(bed: pd.DataFrame) -> pd.DataFrame:
         A dataframe of bed data for genomic coding regions
     '''
     def generate_ranges(row):
-        start = row['start'] + np.array([x for x in row['blockStarts'].split(',') if x], dtype=int)
-        end = start + np.array([x for x in row['blockSizes'].split(',') if x], dtype=int)
+        start = row['start'] + np.array([x for x in str(row['blockStarts']).split(',') if x], dtype=int)
+        end = start + np.array([x for x in str(row['blockSizes']).split(',') if x], dtype=int)
         return pd.DataFrame({
             'name': [row['name']] * len(start),
             'chr': [row['chr']] * len(start),

@@ -92,7 +92,7 @@ def main(args):
     print(genomic_ranges)
     region_mappability = read_region_mappability(args.region_mappability)
     print(region_mappability)
-    genomic_ranges = exclude_unmappable_regions(genomic_ranges, region_mappability)
+    genomic_ranges = exclude_unmappable_regions(genomic_ranges, region_mappability, threshold=0.5)
     print(genomic_ranges)
     write_genomic_ranges(genomic_ranges, args.output)
 

@@ -49,16 +49,23 @@ def ranges_csv_to_tx_summary(ranges: pd.DataFrame) -> pd.DataFrame:
     Returns
     -------
     tx_summary : pd.DataFrame
-        A dataframe of scores for transcripts (name, sum, min, max, mean, median, std)
+        A dataframe of scores for transcripts (name, chr, min_start, max_stop, sum, min, max, mean, median, std)
     '''
-    tx_summary = ranges.groupby(['name']).agg(
+    # Summarize the scores for each transcript
+    tx_summary = ranges.groupby("name").agg(
         {
-            'sum': 'sum',
-            'score': ['min', 'max', 'mean', 'median', 'std']
+            "chr": "first",
+            "start": "min",
+            "end": "max",
+            "name": "size",
+            "sum": "sum",
+            "score": ["min", "max", "mean", "median", "std"],
         }
     )
-    tx_summary.columns = ['sum', 'min', 'max', 'mean', 'median', 'std']
+    tx_summary.columns = ["chr", "start", "end", "count", "sum", "min", "max", "mean", "median", "std"]
+
     return tx_summary
+
 
 
 def write_tx_summary_csv(tx_summary: pd.DataFrame, tx_summary_csv: str) -> None:
@@ -78,6 +85,28 @@ def write_tx_summary_csv(tx_summary: pd.DataFrame, tx_summary_csv: str) -> None:
     '''
     tx_summary.to_csv(tx_summary_csv, sep="\t", header=True, index=True)
 
+def make_gwips_link(tx_summary: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Make a link to the GWIPS website for each transcript
+
+    Parameters
+    ----------
+    tx_summary : pd.DataFrame
+        A dataframe of scores for transcripts (name, sum, min, max, mean, median, std)
+
+    Returns
+    -------
+    tx_summary : pd.DataFrame
+        A dataframe of scores for transcripts (name, sum, min, max, mean, median, std, link)
+    '''
+    base_url = "https://gwips.ucc.ie/cgi-bin/hgTracks?db=hg38" #&position=chr6%3A52497408-52577060
+    links = []
+    for idx, row in tx_summary.iterrows():
+        link = f"{base_url}&position={row.chr}%3A{row.start}-{row.end}"
+        links.append(link)
+
+    tx_summary["link"] = links
+    return tx_summary
 
 def main(args):
     """
@@ -85,6 +114,10 @@ def main(args):
     """
     ranges = read_ranges_csv(args.input)
     tx_summary = ranges_csv_to_tx_summary(ranges)
+    # sort by sum
+    tx_summary = tx_summary.sort_values(by=["sum"], ascending=True)
+    # add a link to the GWIPS website
+    tx_summary = make_gwips_link(tx_summary)
     write_tx_summary_csv(tx_summary, args.output)
 
 

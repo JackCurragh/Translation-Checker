@@ -142,7 +142,7 @@ def calculate_translation_support_bed(
 
 
 def calculate_translation_support_bigwig(
-    genome_ranges: pd.DataFrame, bw: pyBigWig
+    genome_ranges: pd.DataFrame, bw: pyBigWig, cutoff: int = 50
 ) -> pd.DataFrame:
     """
     Calculate translation support for each genomic range
@@ -161,6 +161,8 @@ def calculate_translation_support_bigwig(
     """
     translation_support = pd.DataFrame(columns=["name", "chr", "start", "end", "sum"])
     for row in genome_ranges.iterrows():
+        if row[3] - row[2] <= cutoff:
+            continue
         if row[1] in bw.chroms():
             genomic_range = bw.stats(row[1], row[2], row[3], type="sum")
         else:
@@ -208,7 +210,7 @@ def main(args: argparse.Namespace):
     if file_is_bw:
         ribo_seq = read_ribo_seq_bigwig(args.ribo_seq_file)
         translation_support = calculate_translation_support_bigwig(
-            genomic_ranges, ribo_seq
+            genomic_ranges, ribo_seq, args.cutoff
         )
         write_output_pd(translation_support, args.output_file)
 
@@ -250,6 +252,14 @@ if __name__ == "__main__":
         "--format",
         type=str,
         required=False,
+    )
+    parser.add_argument(
+        "-c",
+        "--cutoff",
+        type=int,
+        required=False,
+        default=50,
+        help="Minimum length of genomic range to calculate translation support",
     )
     args = parser.parse_args()
     main(args)
