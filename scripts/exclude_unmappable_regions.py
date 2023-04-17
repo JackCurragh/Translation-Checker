@@ -69,14 +69,14 @@ def write_genomic_ranges(genomic_ranges: pd.DataFrame, output_file: str) -> None
     '''
     genomic_ranges.to_csv(output_file, sep='\t', header=False, index=False)
 
-def main(args):
-    region_mappability = read_region_mappability(args.region_mappability)
+def main(mappability_file: str, output_file: str) -> None:
+    region_mappability = read_region_mappability(mappability_file)
     genomic_ranges = exclude_unmappable_regions(region_mappability, threshold=0.5)
-    write_genomic_ranges(genomic_ranges, args.output)
+    write_genomic_ranges(genomic_ranges, output_file)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Python script to remove unmappable regions from a genomic ranges csv file')
     parser.add_argument('-m', '--region_mappability', type=str, help='A list of genomic ranges (chr, start, end, mappability)')
     parser.add_argument('-o', '--output', type=str, help='A list of genomic ranges (name, chr, start, end) with unmappable regions removed')
     args = parser.parse_args()
-    main(args)
+    main(args.region_mappability, args.output)
