@@ -76,10 +76,10 @@ def write_bed(bed: pd.DataFrame, output_file: str):
     '''
     bed.to_csv(output_file, sep='\t', header=False, index=False)
 
-def main(args):
-    bed = read_bed(args.input)
+def main(input_file: str, output_file: str):
+    bed = read_bed(input_file)
     bed = bed_to_csv(bed)
-    write_bed(bed, args.output)
+    write_bed(bed, output_file)
 
 
 
@@ -88,5 +88,5 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input', help='A genePred file', required=True)
     parser.add_argument('-o', '--output', help='A bed file', required=True)
     args = parser.parse_args()
-    main(args)
+    main(args.input, args.output)
 
