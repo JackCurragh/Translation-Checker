@@ -244,30 +244,30 @@ def low_memory(args):
         with open(args.output_file, "a") as f:
             result.to_csv(f, header=False, index=False)
 
-def main(args: argparse.Namespace):
+def main(genomic_ranges_file: str, ribo_seq_file: str, output_file: str, cutoff: int = 50, format: str = None):
     """
     Run checker 
     """
-    genomic_ranges = read_genomic_ranges(args.genomic_ranges_file)
+    genomic_ranges = read_genomic_ranges(genomic_ranges_file)
 
-    if not args.format:
-        file_is_bw = pyBigWig.open(args.ribo_seq_file).isBigWig()
+    if not format:
+        file_is_bw = pyBigWig.open(ribo_seq_file).isBigWig()
     else:
-        file_is_bw = args.format == "bw"
+        file_is_bw = format == "bw"
 
     if file_is_bw:
-        ribo_seq = read_ribo_seq_bigwig(args.ribo_seq_file)
+        ribo_seq = read_ribo_seq_bigwig(ribo_seq_file)
         signal_support = calculate_signal_support_bigwig(
-            genomic_ranges, ribo_seq, args.cutoff
+            genomic_ranges, ribo_seq, cutoff
         )
-        write_output_pd(signal_support, args.output_file)
+        write_output_pd(signal_support, output_file)
 
     else:
-        ribo_seq = read_ribo_seq_bed(args.ribo_seq_file)
+        ribo_seq = read_ribo_seq_bed(ribo_seq_file)
         signal_support = calculate_signal_support_bed(
             genomic_ranges, ribo_seq
         )
-        write_output_pl(signal_support, args.output_file)
+        write_output_pl(signal_support, output_file)
 
 
 if __name__ == "__main__":
@@ -319,7 +319,7 @@ if __name__ == "__main__":
     if args.low_memory:
         low_memory(args)
     else:
-        main(args)
+        main(args.genomic_ranges_file, args.ribo_seq_file, args.output_file, args.cutoff, args.format)
 
 
     # # Concatenate the results and save to a new CSV file
