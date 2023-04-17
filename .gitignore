@@ -133,5 +133,7 @@ data/
 *.tsv   
 bedGraphToBigWig
 cls_annotations/
+mane_annotation/
+gencode_comprehensice_annotation/
 scripts/genePredToBed
 scripts/gtfToGenePred

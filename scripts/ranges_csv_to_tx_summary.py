@@ -33,7 +33,7 @@ def read_ranges_csv(ranges_csv: str) -> pd.DataFrame:
         ranges_csv,
         # sep="\t",
         header=0,
-        names=["name", "chr", "start", "end", "sum", "score"],
+        names=["name", "chr", "start", "end", "sum", "score", "mappability"],
     )
     return ranges
 
@@ -60,9 +60,10 @@ def ranges_csv_to_tx_summary(ranges: pd.DataFrame) -> pd.DataFrame:
             "name": "size",
             "sum": "sum",
             "score": ["min", "max", "mean", "median", "std"],
+            "mappability": "mean",
         }
     )
-    tx_summary.columns = ["chr", "start", "end", "count", "sum", "min", "max", "mean", "median", "std"]
+    tx_summary.columns = ["chr", "start", "end", "count", "sum", "min", "max", "mean", "median", "std", "avg_exon_mappabbility"]
 
     return tx_summary
 
