@@ -109,17 +109,17 @@ def make_gwips_link(tx_summary: pd.DataFrame) -> pd.DataFrame:
     tx_summary["link"] = links
     return tx_summary
 
-def main(args):
+def main(input, output):
     """
     Convert a CSV file of scores for ranges to a CSV file of scores for transcripts
     """
-    ranges = read_ranges_csv(args.input)
+    ranges = read_ranges_csv(input)
     tx_summary = ranges_csv_to_tx_summary(ranges)
     # sort by sum
     tx_summary = tx_summary.sort_values(by=["sum"], ascending=True)
     # add a link to the GWIPS website
     tx_summary = make_gwips_link(tx_summary)
-    write_tx_summary_csv(tx_summary, args.output)
+    write_tx_summary_csv(tx_summary, output)
 
 
 if __name__ == "__main__":
@@ -128,4 +128,4 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", help="A CSV file of scores for transcripts (name, sum, min, max, mean, median, std)", required=True)
     args = parser.parse_args()
 
-    main(args)
+    main(args.input, args.output)
