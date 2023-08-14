@@ -33,7 +33,9 @@ def read_ranges_csv(ranges_csv: str) -> pd.DataFrame:
         ranges_csv,
         # sep="\t",
         header=0,
-        names=["name", "chr", "start", "end", "sum", "score", "mappability"],
+        # names=["name", "chr", "start", "end", "sum", "score", "mappability"],
+        names=["name", "chr", "start", "end", "sum", "score"],
+
     )
     return ranges
 
@@ -60,10 +62,10 @@ def ranges_csv_to_tx_summary(ranges: pd.DataFrame) -> pd.DataFrame:
             "name": "size",
             "sum": "sum",
             "score": ["min", "max", "mean", "median", "std"],
-            "mappability": "mean",
+            # "mappability": "mean",
         }
     )
-    tx_summary.columns = ["chr", "start", "end", "count", "sum", "min", "max", "mean", "median", "std", "avg_exon_mappabbility"]
+    tx_summary.columns = ["chr", "start", "end", "count", "sum", "min", "max", "mean", "median", "std"]#, "avg_exon_mappabbility"]
 
     return tx_summary
 
@@ -84,7 +86,9 @@ def write_tx_summary_csv(tx_summary: pd.DataFrame, tx_summary_csv: str) -> None:
     -------
     None
     '''
-    tx_summary.to_csv(tx_summary_csv, sep="\t", header=True, index=True)
+    tx_summary.to_csv("uORFs.tsv", sep="\t", header=True, index=True)
+
+    # tx_summary.to_csv(tx_summary_csv, sep="\t", header=True, index=True)
 
 def make_gwips_link(tx_summary: pd.DataFrame) -> pd.DataFrame:
     '''
@@ -119,6 +123,8 @@ def main(input, output):
     tx_summary = tx_summary.sort_values(by=["sum"], ascending=True)
     # add a link to the GWIPS website
     tx_summary = make_gwips_link(tx_summary)
+    print(tx_summary)
+    print(output)
     write_tx_summary_csv(tx_summary, output)
 
 

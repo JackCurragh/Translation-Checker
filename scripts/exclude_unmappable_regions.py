@@ -53,7 +53,6 @@ def exclude_unmappable_regions(region_mappability: pd.DataFrame, threshold: floa
         A dataframe of genomic ranges (name chr, start, end) with unmappable regions removed
     '''
     mappable_regions = region_mappability[region_mappability['score'] >= threshold]
-    print(mappable_regions)
     return mappable_regions
 
 def write_genomic_ranges(genomic_ranges: pd.DataFrame, output_file: str) -> None:
@@ -68,6 +67,8 @@ def write_genomic_ranges(genomic_ranges: pd.DataFrame, output_file: str) -> None
         A list of genomic ranges (name, chr, start, end) with unmappable regions removed
     '''
     genomic_ranges.to_csv(output_file, sep='\t', header=False, index=False)
+    genomic_ranges.to_csv("/home/jack/projects/Translation-Checker/test/mappable_ranges.csv", sep='\t', header=False, index=False)
+
 
 def main(mappability_file: str, output_file: str) -> None:
     region_mappability = read_region_mappability(mappability_file)
